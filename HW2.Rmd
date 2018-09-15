@@ -1,0 +1,251 @@
+---
+title: "Homework 2 - STAT 5362 Statistical Computing"
+author:
+  - Sen Yang^[<sen.2.yang@uconn.edu>; M.S. student at
+    Department of Statistics, University of Connecticut.]
+date: "`r format(Sys.time(), '%d %B %Y')`"
+documentclass: article
+papersize: letter
+fontsize: 11pt
+bibliography: template.bib
+biblio-style: asa
+keywords: Homework 2, R Markdown, bookdown
+# keywords set in YAML header here only go to the properties of the PDF output
+# the keywords that appear in PDF output are set in latex/before_body.tex
+output:
+  bookdown::pdf_document2
+  bookdown::html_document2
+abstract: |
+    This is **Homework 2** for STAT 5362 Statistical Computing. HW2 has 2 questions. The first question is Exercise 2 of Chapter 1, and the second question is Exercise 3 of Chapter 1. For the first question, I use nested *for* loops to get the approximation value by the Monte Carlo methods, then repeat the experiment for 100 times and draw corresponding boxplot. Fot the second question, by using the 64-bit double precision floating point arithmetic, I show the listed 4 numbers and check them by R.
+---
+
+
+```{r setup, echo = FALSE, message = FALSE, warning = FALSE}
+## some utility functions, see the source code for details
+source("utils_template.R")
+
+## specify the packages needed
+pkgs <- c("DT", "leaflet", "splines2", "webshot")
+need.packages(pkgs)
+
+## external data can be read in by regular functions,
+## such as read.table or load
+
+## for latex and html output
+isHtml <- knitr::is_html_output()
+isLatex <- knitr::is_latex_output()
+latex <- ifelse(isLatex, '\\LaTeX\\', 'LaTeX')
+
+## specify global chunk options
+knitr::opts_chunk$set(fig.width = 5, fig.height = 4, dpi = 300,
+                      out.width = "90%", fig.align = "center")
+
+```
+
+
+# Chapter 1 - Exercise 2 {#sec:P1}
+
+## Math Equations {#sec:math}
+
+The distribution function of $N(0,1)$ is,
+\begin{align}
+    \Phi(t) = \int_{-\infty}^{t} \frac{1}{\sqrt{2\pi}}e^{-y^{2}/2}dy,
+    (\#eq:ndf)
+\end{align}
+
+Consider approximation of the distribution by the Monte Carlo methods:
+\begin{align}
+    \hat{\Phi}(t) = \frac{1}{n} \sum_{i=1}^{n} I(X_{i} \le t),
+    (\#eq:mce)
+\end{align}
+
+
+## Table  {#sec:tbl}
+
+Experiment with the approximation at $n \in {\{10^2, 10^3, 10^4\}}$ at $t \in {\{0.0, 0.67, 0.84, 1.28, 1.65, 2.32, 2.58, 3.09, 3.72\}}$ to form a table. I apply `set.seeds = (100)` before getting random standard normal distribution. Table \@ref(tab:values) shows theoretical value and all approximations with different n with Seed 100.
+
+(ref:values) Table of Theoretical values and Approximations with Seed 100
+
+```{r value, echo = FALSE}
+t <- c(0.0, 0.67, 0.84, 1.28, 1.65, 2.32, 2.58, 3.09, 3.72)
+n <- c(10^2, 10^3, 10^4)
+n_le <- 0
+# Repeat the experiment 100 times and record the biases
+table_bias100 <- matrix(0,300,9)
+# Build the probability matrices and bias matrices by the Monte Carlo methods
+for (m in 1:100) {
+  set.seed(m)
+  table_p <- matrix(0,4,length(t))
+  table_p[1,] <- t
+  table_bias <- table_p
+  for (i in 1:length(n)) {
+    a <- rnorm(n[i])
+      for (j in 1:length(t)) {
+        for (k in 1:n[i]) {
+          if (a[k] <= t[j]) {
+            n_le <- n_le + 1
+          }
+        }
+        table_p[1,j] <- pnorm(t[j])
+        table_p[1+i,j] <- n_le/n[i]
+        n_le <- 0
+        table_bias[1,j] <- pnorm(t[j])
+        table_bias[1+i,j] <- table_p[1+i,j]-table_p[1,j]
+        table_bias100[100*(i-1)+m,j] <- table_bias[1+i,j]
+      }
+  }
+}
+# print a table of probability with seed(100)
+df_p <- as.data.frame(table_p)
+colnames(df_p) <- c("t = 0.0", "t = 0.67", "t = 0.84", "t = 1.28", "t = 1.65", "t = 2.32", "t = 2.58", "t = 3.09", "t = 3.72")
+rownames(df_p) <- c("Theoretical Value", "n = 100", "n = 1000", "n = 10000")
+df_p <- t(df_p)
+knitr::kable(df_p, caption = '(ref:values)', booktabs = TRUE)
+```
+
+## Figures {#sec:figure}
+
+Repeat the experiment 100 times. Draw box plots of the 100 approximation errors at each
+$t$ for each $n$. The result is shown in Figure \@ref(fig:boxplot).
+
+(ref:cap-boxplot) Boxplot of Approximation Errors for Each $t$
+
+```{r boxplot, echo = F, fig.cap = "(ref:cap-boxplot)", out.width = '30%', fig.show = 'hold'}
+# Boxplots of n = 100, 1000, 10000 for each t 
+library(ggplot2)
+x <- as.data.frame(rep(c("n = 100", "n = 1000", "n = 10000"), each = 100))
+for (j in 1:length(t)) {
+  table_boxplot <- cbind(table_bias100[1:300,j],x)
+  df_boxplot <- as.data.frame(table_boxplot)
+  colnames(df_boxplot) <- c("e", "n")
+  print(ggplot(df_boxplot, aes(n, e)) + ylab("Approximation Errors") + geom_boxplot())
+}
+```
+
+It can be concluded that the approximation is more precise and the variation of errors is decreasing with n increasing. Meanwhile, the error goes around 0 in general.
+
+## Code Chunk {#sec:code}
+
+### Code for Tables
+
+```{r value2, eval = FALSE }
+t <- c(0.0, 0.67, 0.84, 1.28, 1.65, 2.32, 2.58, 3.09, 3.72)
+n <- c(10^2, 10^3, 10^4)
+n_le <- 0
+# Repeat the experiment 100 times and record the biases
+table_bias100 <- matrix(0,300,9)
+# Build the probability matrices and bias matrices by the Monte Carlo methods
+for (m in 1:100) {
+  set.seed(m)
+  table_p <- matrix(0,4,length(t))
+  table_p[1,] <- t
+  table_bias <- table_p
+  for (i in 1:length(n)) {
+    a <- rnorm(n[i])
+      for (j in 1:length(t)) {
+        for (k in 1:n[i]) {
+          if (a[k] <= t[j]) {
+            n_le <- n_le + 1
+          }
+        }
+        table_p[1,j] <- pnorm(t[j])
+        table_p[1+i,j] <- n_le/n[i]
+        n_le <- 0
+        table_bias[1,j] <- pnorm(t[j])
+        table_bias[1+i,j] <- table_p[1+i,j]-table_p[1,j]
+        table_bias100[100*(i-1)+m,j] <- table_bias[1+i,j]
+      }
+  }
+}
+# print a table of probability with seed(100)
+df_p <- as.data.frame(table_p)
+colnames(df_p) <- c("t = 0.0", "t = 0.67", "t = 0.84", "t = 1.28", "t = 1.65", "t = 2.32", "t = 2.58", "t = 3.09", "t = 3.72")
+rownames(df_p) <- c("Theoretical Value", "n = 100", "n = 1000", "n = 10000")
+df_p <- t(df_p)
+knitr::kable(df_p, caption = '(ref:values)', booktabs = TRUE)
+```
+
+### Code for boxplots
+
+```{r boxplot2, eval = F}
+# Boxplots of n = 100, 1000, 10000 for each t 
+library(ggplot2)
+x <- as.data.frame(rep(c("n = 100", "n = 1000", "n = 10000"), each = 100))
+for (j in 1:length(t)) {
+  table_boxplot <- cbind(table_bias100[1:300,j],x)
+  df_boxplot <- as.data.frame(table_boxplot)
+  colnames(df_boxplot) <- c("e", "n")
+  print(ggplot(df_boxplot, aes(n, e)) + ylab("Approximation Errors") + geom_boxplot())
+}
+```
+
+# Chapter 1 - Exercise 3 {#sec:P2}
+
+The real value assumed by a given 64-bit double-precision datum is:
+
+\begin{align}
+    (-1)^{sign} (1 + \sum_{i=1}^{52} b_{52-i}2^{-i}) \times 2^{exponent-1023}
+    (\#eq:dpe)
+\end{align}
+
+## .Machine$double.xmax
+
+`.Machine$double.xmax` is the largest normalized floating-point number.
+
+By binary digits, it can be shown as:
+$$0\;\;11111111110\;\;1111111111111111111111111111111111111111111111111111_2$$
+
+By decimal digits, it can be shown as:
+$$(-1)^{0} (1 + (1-2^{-52})) \times 2^{1023}$$
+Calculated by R, the answer is
+
+
+```{r p3_1, echo=F}
+.Machine$double.xmax
+```
+
+## .Machine$double.xmin
+
+`.Machine$double.xmin` is the smallest non-zero normalized floating-point number.
+
+By binary digits, it can be shown as:
+$$0\;\;00000000001\;\;0000000000000000000000000000000000000000000000000000_2$$
+
+By decimal digits, it can be shown as:
+$$(-1)^{0} (1+1) \times 2^{-1023}$$
+Calculated by R, the answer is
+
+
+```{r p3_2, echo=F}
+.Machine$double.xmin
+```
+
+
+## .Machine$double.eps
+
+`.Machine$double.eps` is the smallest positive floating-point number x such that $1 + x \ne 1$.
+
+By decimal digits, it can be shown as:
+$$2^{-52}$$
+Calculated by R, the answer is
+
+
+```{r p3_3, echo=F}
+.Machine$double.eps
+```
+
+
+## .Machine$double.neg.eps
+
+`.Machine$double.neg.eps` is a small positive floating-point number x such that $1 - x \ne 1$.
+
+By decimal digits, it can be shown as:
+$$2^{-53}$$
+Calculated by R, the answer is
+
+
+```{r p3_4, echo=F}
+.Machine$double.neg.eps
+```
+
+
