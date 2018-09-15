@@ -7,9 +7,6 @@ date: "`r format(Sys.time(), '%d %B %Y')`"
 documentclass: article
 papersize: letter
 fontsize: 11pt
-bibliography: template.bib
-biblio-style: asa
-keywords: Homework 2, R Markdown, bookdown
 # keywords set in YAML header here only go to the properties of the PDF output
 # the keywords that appear in PDF output are set in latex/before_body.tex
 output:
@@ -66,7 +63,7 @@ Experiment with the approximation at $n \in {\{10^2, 10^3, 10^4\}}$ at $t \in {\
 
 (ref:values) Table of Theoretical values and Approximations with Seed 100
 
-```{r value, echo = FALSE}
+```{r values, echo = FALSE}
 t <- c(0.0, 0.67, 0.84, 1.28, 1.65, 2.32, 2.58, 3.09, 3.72)
 n <- c(10^2, 10^3, 10^4)
 n_le <- 0
